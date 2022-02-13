@@ -1,0 +1,127 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## Packages
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(DataExplorer)
+library(caret)
+```
+
+
+## Data
+
+```{r}
+diabetic_data_initial <- read_csv("data/src/diabetic_data_initial.csv", na = c("?"))
+```
+
+
+## Understand data
+
+```{r}
+glimpse(diabetic_data_initial)
+
+introduce(diabetic_data_initial)
+
+plot_missing(
+    diabetic_data_initial
+)
+```
+```{r}
+plot_missing(
+    diabetic_data_initial %>%
+    select(-weight, -payer_code, -medical_specialty) %>%
+    filter(
+        !duplicated(patient_nbr),
+        !discharge_disposition_id %in% c(11, 13, 14, 19, 20, 21)
+    )
+)
+
+# understand levels in medical specialty
+table(diabetic_data_initial$medical_specialty, diabetic_data_initial$readmitted)
+## adds no value
+
+# other missing with small values
+table(diabetic_data_initial$race)
+## all missing in race can be assigned to other from a demographic prespective since no other value available to fix issue
+
+# labeled out for formatting purposses
+# table(as.factor(diabetic_data_initial$diag_3))
+## assign after transformation to majority for all diags
+```
+
+## Data processing
+
+```{r}
+source("./code/functions/icd9_transform_function.R")
+diabetic_data <- diabetic_data_initial %>%
+    # drop major missing vars (Medical Specialty is uniform across readmission, adds no value)
+    select(-weight, -payer_code, -medical_specialty) %>%
+    filter(
+        !duplicated(patient_nbr),
+        !discharge_disposition_id %in% c(11, 13, 14, 19, 20, 21)
+    ) %>%
+    # fix missing for variables with minimum threshhold for missing (n < 30%)
+    mutate(
+        race = as.factor(ifelse(is.na(race), "Other", race)),
+        diag_1 = as.factor(diag_mutation(diag_1)),
+        diag_2 = as.factor(diag_mutation(diag_2)),
+        diag_3 = as.factor(diag_mutation(diag_3)),
+        readmitted = ifelse(readmitted == ">30", "NO", readmitted)
+    ) %>%
+    mutate_if(is.character, as.factor) %>%
+    mutate_at(vars(starts_with("number")), as.factor)
+
+```
+
+## Data analysis
+
+### Checking on categorical variables
+
+```{r}
+plot_bar(diabetic_data)
+```
+
+outcome: 
+- drop third gender and check for zero and near zero variance  
+- Rule 1: if number of diagnosis is > 8, then readmitt == T
+
+### Checking on other variables distributions
+
+```{r}
+plot_histogram(diabetic_data)
+```
+Outcome: assign variables as factors as necessary and drop others
+
+## Model preprocessing
+
+The categorical variables indicate various zero or near zero variances, we neet to further explore these to understand which need to be dropped
+```{r}
+diab_nvz = diabetic_data %>%
+    select(-readmitted) %>%
+    nearZeroVar(., saveMetrics = TRUE)
+
+drop <- diab_nvz %>%
+    dplyr::filter(zeroVar == T | nzv == T) 
+
+
+diabetic_data_processed <- diabetic_data %>%
+    select(-one_of(row.names(drop))) %>%
+    dplyr::filter(gender != "Unknown/Invalid") %>%
+    mutate_at(vars(starts_with("number")), as.factor)
+
+plot_bar(diabetic_data_processed, by = "readmitted")
+```
+
+
+## Modelling
+
+## Model analysis
+
+## Model production
+
+## Model Scaling
