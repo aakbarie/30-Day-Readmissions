@@ -74,9 +74,56 @@ diabetic_data <- diabetic_data_initial %>%
         readmitted = ifelse(readmitted == ">30", "NO", readmitted)
     ) %>%
     mutate_if(is.character, as.factor) %>%
-    mutate_at(vars(starts_with("number")), as.factor)
+    mutate(
+        admission_type = case_when(
+            admission_type_id == 1 ~ "Emergency",
+            admission_type_id == 2 ~ "Urgent",
+            admission_type_id == 3 ~ "Elective",
+            admission_type_id %in% c(4, 5, 6, 7, 8) ~ "Other"
+        ),
+        discharge_disposition = case_when(
+            discharge_disposition_id == 1 ~ "Discharged to home",
+            discharge_disposition_id == 2 ~ "Discharged/transferred to another short term hospital",
+            discharge_disposition_id == 3 ~ "Discharged/transferred to SNF",
+            discharge_disposition_id == 5 ~ "Discharged/transferred to another type of inpatient care institution",
+            discharge_disposition_id == 6 ~ "Discharged/transferred to home with home health service",
+            discharge_disposition_id == 22 ~ "Discharged/transferred to another rehab fac",
+            T ~ "Other"
+        ),
+        admission_source = case_when(
+            admission_source_id == 1 ~ "Physician Referral",
+            admission_source_id == 2 ~ "Clinic Referral",
+            admission_source_id == 4 ~ "Transfer from a hospital",
+            admission_source_id == 6 ~ "Transfer from another health care facility",
+            admission_source_id == 7 ~ "Emergency Room",
+            T ~ "Other"
+        ),
+        number_inpatient = case_when(
+            number_inpatient > 5 ~ "Greater than 5 visits",
+            number_inpatient == 4 ~ "4",
+            number_inpatient == 3 ~ "3",
+            number_inpatient == 2 ~ "2",
+            number_inpatient == 1 ~ "1",
+            number_inpatient == 0 ~ "0"
+        ),
+        number_outpatient = case_when(
+            number_outpatient > 1 ~ "Greater than 1 visit",
+            number_outpatient == 1 ~ "1",
+            number_outpatient == 0 ~ "0"
+        ),
+        number_diagnoses = as.factor(ifelse(number_diagnoses > 9, 9, number_diagnoses)),
+        A1Cresult = case_when(
+            A1Cresult %in% c(">7", ">8") ~ "Diabetic",
+            A1Cresult == "None" ~ "No Measurement",
+            A1Cresult == "Norm" ~ "Not Diabetic"
+        ),
+        num_procedures = as.factor(num_procedures)
+    ) %>%
+    select(
+        -c(admission_type_id, admission_source_id, discharge_disposition_id)
+    )
 
-```
+Aw```
 
 ## Data analysis
 
@@ -88,14 +135,16 @@ plot_bar(diabetic_data)
 
 outcome: 
 - drop third gender and check for zero and near zero variance  
-- Rule 1: if number of diagnosis is > 8, then readmitt == T
+- Rule 1: if number of diagnosis is > 8, then readmit == T
 
 ### Checking on other variables distributions
 
 ```{r}
 plot_histogram(diabetic_data)
 ```
-Outcome: assign variables as factors as necessary and drop others
+Outcome: 
+- assign variables as factors as necessary and drop others  
+- reorder number_ factors and change from numeric to factor to include greater than 6
 
 ## Model preprocessing
 
@@ -112,7 +161,7 @@ drop <- diab_nvz %>%
 diabetic_data_processed <- diabetic_data %>%
     select(-one_of(row.names(drop))) %>%
     dplyr::filter(gender != "Unknown/Invalid") %>%
-    mutate_at(vars(starts_with("number")), as.factor)
+    mutate_at(vars(starts_with("number")), as.numeric)
 
 plot_bar(diabetic_data_processed, by = "readmitted")
 ```
