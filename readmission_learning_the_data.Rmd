@@ -5,17 +5,23 @@ output: html_notebook
 
 ## Packages
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidymodels)
 library(DataExplorer)
 library(caret)
 ```
 
+## Loading functions
+
+```{r}
+source("code/functions/color_pallet.R")
+```
+
 
 ## Data
 
-```{r}
+```{r, message=FALSE, warning=FALSE, results='hide'}
 diabetic_data_initial <- read_csv("data/src/diabetic_data_initial.csv", na = c("?"))
 ```
 
@@ -117,15 +123,54 @@ diabetic_data <- diabetic_data_initial %>%
             A1Cresult == "None" ~ "No Measurement",
             A1Cresult == "Norm" ~ "Not Diabetic"
         ),
+        number_emergency = case_when(
+            number_emergency == 0 ~ "0",
+            number_emergency == 1 ~ "1",
+            number_emergency == 2 ~ "2",
+            number_emergency > 2  ~ "More than 2 visits"
+        ),
+        time_in_hospital = case_when(
+            time_in_hospital < 4 ~ "less than 3 days",
+            time_in_hospital > 3 ~ "more than 3 days"
+        ),
+        metformin = case_when(
+            metformin %in% c("Down", "Up", "Steady") ~ "Yes",
+            metformin == "No" ~ "No"
+        ),
+        glipizide = case_when(
+            glipizide %in% c("Down", "Up", "Steady") ~ "Yes",
+            glipizide == "No" ~ "No"
+        ),
+        glimepiride = case_when(
+            glimepiride %in% c("Down", "Up", "Steady") ~ "Yes",
+            glimepiride == "No" ~ "No"
+        ),
+        glyburide = case_when(
+            glyburide %in% c("Down", "Up", "Steady") ~ "Yes",
+            glyburide == "No" ~ "No"
+        ),
         num_procedures = as.factor(num_procedures)
     ) %>%
     select(
         -c(admission_type_id, admission_source_id, discharge_disposition_id)
-    )
-
-Aw```
+    ) %>%
+    filter(gender != "Unknown/Invalid") # removing gender grouping as it has no effect on readmission
+```
 
 ## Data analysis
+
+### Distribution of Readmissions
+
+```{r}
+diabetic_data %>%
+    ggplot(aes(x = readmitted, fill = readmitted)) +
+    geom_bar(alpha = 0.8) +
+    theme(legend.position = "none") +
+    labs(x = "Readmissions", 
+         y = "count",
+        title = "Distribution of Readmissions")
+```
+
 
 ### Checking on categorical variables
 
@@ -135,7 +180,7 @@ plot_bar(diabetic_data)
 
 outcome: 
 - drop third gender and check for zero and near zero variance  
-- Rule 1: if number of diagnosis is > 8, then readmit == T
+- Rule 1: if number of ip admits is > 4, then readmit == High
 
 ### Checking on other variables distributions
 
@@ -144,11 +189,10 @@ plot_histogram(diabetic_data)
 ```
 Outcome: 
 - assign variables as factors as necessary and drop others  
-- reorder number_ factors and change from numeric to factor to include greater than 6
 
 ## Model preprocessing
 
-The categorical variables indicate various zero or near zero variances, we neet to further explore these to understand which need to be dropped
+The categorical variables indicate various zero or near zero variances, we need to further explore these to understand which need to be dropped
 ```{r}
 diab_nvz = diabetic_data %>%
     select(-readmitted) %>%
@@ -159,9 +203,8 @@ drop <- diab_nvz %>%
 
 
 diabetic_data_processed <- diabetic_data %>%
-    select(-one_of(row.names(drop))) %>%
-    dplyr::filter(gender != "Unknown/Invalid") %>%
-    mutate_at(vars(starts_with("number")), as.numeric)
+    dplyr::select(-one_of(row.names(drop))) %>%
+    dplyr::filter(gender != "Unknown/Invalid")
 
 plot_bar(diabetic_data_processed, by = "readmitted")
 ```
