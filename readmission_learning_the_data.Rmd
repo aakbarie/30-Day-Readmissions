@@ -5,6 +5,7 @@ output: html_notebook
 
 ## Packages
 
+[here](https://shirinsplayground.netlify.app/2021/04/goodbadugly_ml/)
 ```{r, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(tidymodels)
@@ -149,12 +150,21 @@ diabetic_data <- diabetic_data_initial %>%
             glyburide %in% c("Down", "Up", "Steady") ~ "Yes",
             glyburide == "No" ~ "No"
         ),
+        pioglitazone = case_when(
+            pioglitazone %in% c("Down", "Up", "Steady") ~ "Yes",
+            pioglitazone == "No" ~ "No"
+        ),
+        rosiglitazone =  case_when(
+            rosiglitazone %in% c("Down", "Up", "Steady") ~ "Yes",
+            rosiglitazone == "No" ~ "No"
+        ),
         num_procedures = as.factor(num_procedures)
     ) %>%
     select(
         -c(admission_type_id, admission_source_id, discharge_disposition_id)
     ) %>%
     filter(gender != "Unknown/Invalid") # removing gender grouping as it has no effect on readmission
+
 ```
 
 ## Data analysis
@@ -211,6 +221,11 @@ plot_bar(diabetic_data_processed, by = "readmitted")
 
 
 ## Modelling
+
+```{r}
+
+```
+
 
 ## Model analysis
 
