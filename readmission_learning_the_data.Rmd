@@ -7,6 +7,7 @@ output: html_notebook
 
 [here](https://shirinsplayground.netlify.app/2021/04/goodbadugly_ml/)
 ```{r, message=FALSE, warning=FALSE}
+library(sparklyr)
 library(tidyverse)
 library(tidymodels)
 library(DataExplorer)
@@ -158,6 +159,14 @@ diabetic_data <- diabetic_data_initial %>%
             rosiglitazone %in% c("Down", "Up", "Steady") ~ "Yes",
             rosiglitazone == "No" ~ "No"
         ),
+        num_lab_procedures = case_when(
+            num_lab_procedures < 51 ~ "less than or equal 50",
+            num_lab_procedures > 50 ~ "Greater than 50"
+        ),
+        num_medications = case_when(
+            num_medications < 26 ~ "less than or equal 25",
+            num_medications > 25 ~ "greater than 25"
+        ),
         num_procedures = as.factor(num_procedures)
     ) %>%
     select(
@@ -218,12 +227,26 @@ diabetic_data_processed <- diabetic_data %>%
 
 plot_bar(diabetic_data_processed, by = "readmitted")
 ```
+### correlation Analysis (numric variables)
+
+```{r}
+
+```
+
+### PCA Analysis (numric variables)
+
+```{r}
+
+```
 
 
 ## Modelling
 
-```{r}
+### Spark frames
 
+```{r}
+sc <- spark_connect("local")
+spark_diabetic <- copy_to(sc, diabetic_data)
 ```
 
 
